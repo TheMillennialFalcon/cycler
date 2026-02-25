@@ -18,7 +18,7 @@
 
   <!-- Data generators and helpers: plain JS, no Babel needed -->
   <script>
-import { useState, useMemo, useRef, useCallback } from "react";
+const { useState, useMemo, useRef, useCallback } = React;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATASET GENERATORS
@@ -1087,10 +1087,10 @@ function lerpColor(a, b, t) {
 
   </script>
 
-  <!-- React component: needs Babel to compile JSX -->
-  <script type="text/babel" data-presets="react,env">
+  <!-- React component: Babel compiles JSX only, no module transforms -->
+  <script type="text/babel" data-presets="react">
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function CycleViz() {
+function CycleViz() {
   const [datasetKey, setDatasetKey]     = useState("S&P 500 Returns");
   const [period, setPeriod]             = useState(12);
   const [showAvg, setShowAvg]           = useState(true);
@@ -2707,8 +2707,9 @@ const btnStyle = {
   display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
 };
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(CycleVisualizer));
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      React.createElement(CycleViz)
+    );
   </script>
 </body>
 </html>
