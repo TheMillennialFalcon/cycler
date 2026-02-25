@@ -15,7 +15,7 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
+  <script type="text/babel" data-presets="react,env">
 import { useState, useMemo, useRef, useCallback } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -660,7 +660,7 @@ function makeUnemploymentRate() {
 
   const data = [];
   for(let i = 0; i < 912; i++) {
-    const b     = base[i] ?? 5.5;
+    const b     = ( base[i] !== undefined ? base[i] : 5.5 );
     const seas  = mSeasonal[i % 12];
     const noise = (Math.random()-0.5) * 0.18;
     data.push(Math.max(1.0, parseFloat((b + seas + bizCycle(i) + noise).toFixed(1))));
@@ -723,7 +723,7 @@ function makeGlobalTemperature() {
     // Pinatubo 1992 cooling
     const pinatubo = (i===112) ? -0.3 : (i===113) ? -0.25 : (i===114) ? -0.1 : 0;
     const noise = (Math.random()-0.5) * 0.04;
-    data.push(parseFloat(((base[i]??0) + solar + enso + amo + pinatubo + noise).toFixed(3)));
+    data.push(parseFloat((( base[i] !== undefined ? base[i] : 0 ) + solar + enso + amo + pinatubo + noise).toFixed(3)));
   }
   return {
     values: data, unit: "°C", label: "Global Temperature Anomaly — Annual °C (NASA GISS, 1880–2023)",
@@ -1110,9 +1110,9 @@ export default function CycleViz() {
 
   const handleDatasetChange = (key) => {
     const ds = allDatasets[key];
-    const newPeriod  = ds?.suggestedPeriod || 12;
+    const newPeriod  = (ds && ds.suggestedPeriod) || 12;
     const starts     = DATASET_STARTS[key] || { year:2020, sub:1 };
-    const todayPhase = computeTodayPhase(ds?.freq || 'monthly', starts.year, starts.sub, newPeriod);
+    const todayPhase = computeTodayPhase((ds && ds.freq) || 'monthly', starts.year, starts.sub, newPeriod);
     setDatasetKey(key);
     setPeriod(newPeriod);
     setMaxCycles(8);
@@ -1412,8 +1412,8 @@ export default function CycleViz() {
   const needleR = avgCycle.length ? IR + ((avgCycle[currentPhase]-minV)/range)*(OR-IR) : OR;
   const needleX = CX + needleR*Math.cos(needleAngle);
   const needleY = CY + needleR*Math.sin(needleAngle);
-  const currentStrength = phaseStrength[currentPhase] ?? 0;
-  const currentVal = avgCycle[currentPhase] ?? 0;
+  const currentStrength = ( phaseStrength[currentPhase] !== undefined ? phaseStrength[currentPhase] : 0 );
+  const currentVal = ( avgCycle[currentPhase] !== undefined ? avgCycle[currentPhase] : 0 );
   const currentColor = currentStrength > 0.15 ? "#6de8b8" : currentStrength < -0.15 ? "#e87d6d" : "#e8b86d";
 
   // Forecast: next 2 full cycles from currentPhase
@@ -1423,11 +1423,11 @@ export default function CycleViz() {
     for(let i=0; i<remaining; i++) {
       const phase = (currentPhase + i) % period;
       cells.push({ phase, cycleOffset:0, stepsAhead:i,
-        strength: phaseStrength[phase]??0, val: avgCycle[phase]??0 });
+        strength: ( phaseStrength[phase] !== undefined ? phaseStrength[phase] : 0 ), val: ( avgCycle[phase] !== undefined ? avgCycle[phase] : 0 ) });
     }
     for(let i=0; i<period; i++) {
       cells.push({ phase:i, cycleOffset:1, stepsAhead: remaining + i,
-        strength: phaseStrength[i]??0, val: avgCycle[i]??0 });
+        strength: ( phaseStrength[i] !== undefined ? phaseStrength[i] : 0 ), val: ( avgCycle[i] !== undefined ? avgCycle[i] : 0 ) });
     }
     return cells;
   }, [currentPhase, period, phaseStrength, avgCycle]);
@@ -1821,7 +1821,7 @@ export default function CycleViz() {
 
           {/* ── Expansion/contraction zone fills ── */}
           {avgCycle.length > 0 && avgCycle.map((_, i) => {
-            const s = phaseStrength[i] ?? 0;
+            const s = ( phaseStrength[i] !== undefined ? phaseStrength[i] : 0 );
             if(Math.abs(s) < 0.05) return null;
             const isAbove = s > 0;
             // Color: teal for expansion, amber-red for contraction, intensity by strength
@@ -2188,8 +2188,8 @@ export default function CycleViz() {
             const dataIdx = θ_progress * (period - 1);
             const d0 = Math.floor(dataIdx), d1 = Math.min(period-1, d0+1);
             const frac = dataIdx - d0;
-            const v0 = (cyc[d0] ?? avgCycle[d0] ?? 0);
-            const v1 = (cyc[d1] ?? avgCycle[d1] ?? 0);
+            const v0 = ( cyc[d0] !== undefined ? cyc[d0] : ( avgCycle[d0] !== undefined ? avgCycle[d0] : 0 ) );
+            const v1 = ( cyc[d1] !== undefined ? cyc[d1] : ( avgCycle[d1] !== undefined ? avgCycle[d1] : 0 ) );
             const rawV = v0 + frac*(v1-v0);
             // Normalize to 0..1 using global min/max
             const normV = maxV > minV ? (rawV - minV) / (maxV - minV) : 0.5;
@@ -2202,7 +2202,7 @@ export default function CycleViz() {
         // Peak envelope: connect peak points of each cycle ring
         const envelopePts = visibleCycles.map((cyc, c) => {
           const baseR = minRing + c * ringStep;
-          const peakV = cyc[peakIdx] ?? avgCycle[peakIdx] ?? 0;
+          const peakV = ( cyc[peakIdx] !== undefined ? cyc[peakIdx] : ( avgCycle[peakIdx] !== undefined ? avgCycle[peakIdx] : 0 ) );
           const normV = maxV > minV ? (peakV - minV) / (maxV - minV) : 0.5;
           const r = baseR * (0.35 + 0.65 * normV);
           const θ = -Math.PI/2 + (peakIdx / period) * Math.PI * 2;
@@ -2212,7 +2212,7 @@ export default function CycleViz() {
         // Trough envelope
         const troughEnvPts = visibleCycles.map((cyc, c) => {
           const baseR = minRing + c * ringStep;
-          const troughV = cyc[troughIdx] ?? avgCycle[troughIdx] ?? 0;
+          const troughV = ( cyc[troughIdx] !== undefined ? cyc[troughIdx] : ( avgCycle[troughIdx] !== undefined ? avgCycle[troughIdx] : 0 ) );
           const normV = maxV > minV ? (troughV - minV) / (maxV - minV) : 0.5;
           const r = baseR * (0.35 + 0.65 * normV);
           const θ = -Math.PI/2 + (troughIdx / period) * Math.PI * 2;
@@ -2311,8 +2311,8 @@ export default function CycleViz() {
                     const dataIdx = θ_progress * (period - 1);
                     const d0 = Math.floor(dataIdx), d1 = Math.min(period-1, d0+1);
                     const frac2 = dataIdx - d0;
-                    const v0 = cyc[d0] ?? avgCycle[d0] ?? 0;
-                    const v1 = cyc[d1] ?? avgCycle[d1] ?? 0;
+                    const v0 = ( cyc[d0] !== undefined ? cyc[d0] : ( avgCycle[d0] !== undefined ? avgCycle[d0] : 0 ) );
+                    const v1 = ( cyc[d1] !== undefined ? cyc[d1] : ( avgCycle[d1] !== undefined ? avgCycle[d1] : 0 ) );
                     const rawV = v0 + frac2*(v1-v0);
                     const normV = maxV > minV ? (rawV - minV) / (maxV - minV) : 0.5;
                     const r = baseR * (0.35 + 0.65 * normV);
@@ -2466,7 +2466,7 @@ export default function CycleViz() {
 
         // Average cycle overlay — repeat avgCycle across the full data span
         const avgPts = values.map((_,i) => {
-          const v = avgCycle[i % period] ?? 0;
+          const v = ( avgCycle[i % period] !== undefined ? avgCycle[i % period] : 0 );
           return `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`;
         }).join(' ');
 
@@ -2701,7 +2701,7 @@ const btnStyle = {
 };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<CycleVisualizer />);
+    root.render(React.createElement(CycleVisualizer));
   </script>
 </body>
 </html>
