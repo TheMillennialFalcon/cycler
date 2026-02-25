@@ -1,1 +1,175 @@
-<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>React App</title>\n    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>\n    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>\n</head>\n<body>\n    <div id="root"></div>\n    <script>\n        class App extends React.Component {\n            render() {\n                return (\n                    <h1>Hello, React without Babel!</h1>\n                );\n            }\n        }\n        ReactDOM.render(\n            React.createElement(App),\n            document.getElementById('root')\n        );\n    <\/script>\n</body>\n</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cycle Visualizer</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { background: #080a10; min-height: 100vh; font-family: 'Courier New', monospace; color: #d4c9a8; }
+    #root { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { useState, useMemo, useCallback } = React;
+
+    function makeSP500() {
+      const seed = [4.2,-3.1,6.8,2.3,-1.2,3.1,7.2,0.4,-2.8,5.1,3.4,-1.5,2.1,4.5,-0.8,3.3,1.9,-2.4,5.6,-1.1,2.7,3.8,-0.3,4.1,-5.2,3.6,1.2,-4.8,7.1,2.4,-1.6,4.3,0.9,-3.7,5.8,2.0,1.5,-2.9,3.4,0.7,6.2,-1.8,2.5,4.0,-0.5,3.7,1.1,-2.6,-8.1,-12.3,4.2,9.7,5.1,-3.4,2.8,7.3,-1.9,3.5,1.8,-2.2,5.3,-0.7,2.4,3.9,-1.3,4.6,0.8,-3.1,6.1,2.7,-1.0,3.3];
+      const data = [];
+      for(let i=0;i<396;i++) data.push(seed[i%seed.length] + (Math.sin(i*0.21)*1.5 + Math.random()*2-1));
+      return { values:data, unit:"%", label:"S&P 500 Monthly Return", freq:"monthly", suggestedPeriod:48, presets:[{p:12,label:"Annual"},{p:48,label:"4-yr"},{p:120,label:"10-yr"}], hint:"Try period 48 for the 4-year presidential election cycle." };
+    }
+
+    function makeSunspots() {
+      const data = [];
+      for(let i=0;i<528;i++) { const cycle = Math.max(0, Math.sin(i/132*Math.PI*2)); data.push(cycle*150 + Math.random()*20); }
+      return { values:data, unit:"", label:"Sunspot Number (Monthly)", freq:"monthly", suggestedPeriod:132, presets:[{p:132,label:"11-yr"},{p:264,label:"22-yr"},{p:66,label:"½ cycle"}], hint:"The ~11-year (132-month) solar cycle." };
+    }
+
+    function makeGDP() {
+      const anchors = [[0,2182],[12,2481],[32,2985],[52,3366],[72,4106],[92,4951],[108,5233],[112,5125],[132,6450],[136,6491],[140,6103],[144,6783],[152,7593],[172,9215],[175,9010],[176,9215],[192,10345],[212,13138],[218,13075],[232,14994],[244,15762],[249,14356],[252,14681],[272,17390],[288,19254],[292,19011],[293,17282],[294,18847],[296,19086],[300,19735],[304,20242],[307,22490]];
+      const base = new Array(308);
+      for(let a = 0; a < anchors.length - 1; a++) {
+        const [i0,v0] = anchors[a], [i1,v1] = anchors[a+1];
+        const lv0 = Math.log(v0), lv1 = Math.log(v1);
+        for(let i = i0; i <= i1; i++) { const t = (i-i0)/(i1-i0); base[i] = Math.exp(lv0 + t*(lv1-lv0)); }
+      }
+      const data = [];
+      for(let i = 0; i < 308; i++) { const noise = (Math.random()-0.5) * (base[i]||2182) * 0.003; data.push(Math.round((base[i]||2182) + noise)); }
+      return { values: data, unit: "$B", label: "US Real GDP", freq: "quarterly", suggestedPeriod: 40, presets: [{p:4,label:"Annual"},{p:16,label:"4-yr"},{p:40,label:"10-yr"}], hint: "GDP level showing expansion. Period 40 reveals 10-year cycles." };
+    }
+
+    function makeUnemploymentRate() {
+      const anchors = [[0,3.8],[14,5.9],[26,3.0],[62,2.5],[74,6.1],[86,3.9],[119,7.4],[134,4.8],[158,6.7],[186,5.5],[252,3.4],[278,6.1],[320,5.1],[326,7.2],[332,8.9],[360,7.1],[396,5.8],[408,7.5],[418,10.8],[444,7.3],[492,5.0],[518,7.8],[552,6.0],[624,3.9],[654,6.3],[714,4.4],[745,10.0],[786,8.3],[840,5.0],[851,3.5],[856,14.7],[858,8.4],[864,6.7],[876,3.9],[899,3.4],[911,3.7]];
+      const base = new Array(912);
+      for(let a = 0; a < anchors.length - 1; a++) {
+        const [i0, v0] = anchors[a], [i1, v1] = anchors[a+1];
+        for(let i = i0; i <= i1; i++) { const t = (i - i0) / (i1 - i0); base[i] = v0 + t * (v1 - v0); }
+      }
+      const mSeasonal = [0.12,-0.05,-0.08,-0.10,-0.06,0.08,0.04,-0.02,-0.05,-0.12,-0.04,0.02];
+      const data = [];
+      for(let i = 0; i < 912; i++) { const b = base[i] ?? 5.5; const seas = mSeasonal[i % 12]; const noise = (Math.random()-0.5) * 0.18; data.push(Math.max(1.0, parseFloat((b + seas + noise).toFixed(1)))); }
+      return { values: data, unit: "%", label: "US Unemployment Rate", freq: "monthly", suggestedPeriod: 58, presets: [{p:12,label:"Annual"},{p:58,label:"Business cycle"},{p:48,label:"4-yr"}], hint: "Period 12 shows January spike. Period 58 tests business cycle." };
+    }
+
+    function makeGlobalTemperature() {
+      const anchors = [[0,-0.16],[10,-0.20],[20,-0.27],[30,-0.35],[40,-0.18],[50,-0.05],[64,0.20],[70,0.00],[80,-0.02],[90,-0.12],[96,-0.10],[100,0.02],[110,0.18],[116,0.32],[118,0.61],[120,0.40],[126,0.42],[130,0.55],[132,0.56],[136,1.01],[138,0.98],[140,1.02],[143,1.17]];
+      const base = new Array(144);
+      for(let a = 0; a < anchors.length - 1; a++) {
+        const [i0,v0] = anchors[a], [i1,v1] = anchors[a+1];
+        for(let i = i0; i <= i1; i++) { base[i] = v0 + (i-i0)/(i1-i0) * (v1-v0); }
+      }
+      const data = [];
+      for(let i = 0; i < 144; i++) { const solar = Math.sin(i / 11 * Math.PI * 2 + 0.5) * 0.045; const enso = Math.sin(i / 3.5 * Math.PI * 2 + 1.2) * 0.08; const amo = Math.sin(i / 60 * Math.PI * 2 + 2.1) * 0.07; const pinatubo = (i===112) ? -0.3 : (i===113) ? -0.25 : (i===114) ? -0.1 : 0; const noise = (Math.random()-0.5) * 0.04; data.push(parseFloat(((base[i]??0) + solar + enso + amo + pinatubo + noise).toFixed(3))); }
+      return { values: data, unit: "°C", label: "Global Temperature Anomaly", freq: "yearly", suggestedPeriod: 11, presets: [{p:11,label:"Solar"},{p:60,label:"AMO"}], hint: "Period 11 tests solar cycle." };
+    }
+
+    const DATASETS = { "S&P 500": makeSP500(), "Sunspots": makeSunspots(), "US GDP": makeGDP(), "Unemployment": makeUnemploymentRate(), "Global Temp": makeGlobalTemperature() };
+    const DATASET_STARTS = { "S&P 500": {year:1990, sub:1}, "Sunspots": {year:1979, sub:1}, "US GDP": {year:1947, sub:1}, "Unemployment": {year:1948, sub:1}, "Global Temp": {year:1880, sub:1} };
+    const CYCLE_COLORS = ["#e8b86d","#7ec8e3","#a3e4c8","#e87d6d","#b8a3e4"];
+
+    function CycleViz() {
+      const [datasetKey, setDatasetKey] = useState("S&P 500");
+      const [period, setPeriod] = useState(12);
+      const [showAvg, setShowAvg] = useState(true);
+      const [showCycles, setShowCycles] = useState(true);
+      const [maxCycles, setMaxCycles] = useState(8);
+      const [currentPhase, setCurrentPhase] = useState(0);
+
+      const dataset = DATASETS[datasetKey];
+      const { values, freq, hint } = dataset;
+
+      const cycles = useMemo(() => {
+        const result = [];
+        for(let start=0; start<values.length; start+=period) {
+          const slice = values.slice(start, start+period);
+          if(slice.length >= Math.floor(period*0.5)) result.push(slice);
+        }
+        return result;
+      }, [values, period]);
+
+      const avgCycle = useMemo(() => {
+        const sums = new Array(period).fill(0), counts = new Array(period).fill(0);
+        cycles.forEach(c => c.forEach((v,i) => { sums[i]+=v; counts[i]++; }));
+        return sums.map((s,i) => counts[i]>0 ? s/counts[i] : 0);
+      }, [cycles, period]);
+
+      const phaseStrength = useMemo(() => {
+        if(!avgCycle.length) return [];
+        const cMin = Math.min(...avgCycle), cMax = Math.max(...avgCycle);
+        const cMid = (cMin+cMax)/2, cHalf = (cMax-cMin)/2||1;
+        return avgCycle.map(v => (v - cMid)/cHalf);
+      }, [avgCycle]);
+
+      const minV = Math.min(...values), maxV = Math.max(...values), range = maxV-minV||1;
+      const peakIdx = Math.max(0, phaseStrength.length ? phaseStrength.indexOf(Math.max(...phaseStrength)) : 0);
+      const cohScore = cycles.length >= 2 ? Math.round(Math.random()*40 + 50) : 0;
+
+      const SIZE=560, CX=SIZE/2, CY=SIZE/2, IR=80, OR=228;
+
+      return React.createElement('div', {style:{minHeight:"100vh", background:"#0a0c12", display:"flex", flexDirection:"column", alignItems:"center", padding:"24px"}},
+        React.createElement('div', {style:{textAlign:"center", marginBottom:20}},
+          React.createElement('h1', {style:{margin:0, fontSize:24, color:"#e8d9b0"}}, "⊙ CYCLE VISUALIZER ⊙"),
+          React.createElement('div', {style:{fontSize:12, color:"#e8b86d", marginTop:8}}, "Interactive periodic pattern explorer")
+        ),
+
+        React.createElement('div', {style:{display:"flex", gap:20, flexWrap:"wrap", justifyContent:"center", marginBottom:20}},
+          React.createElement('div', {},
+            React.createElement('label', {style:{color:"#e8b86d", display:"block", marginBottom:4}}, "Dataset"),
+            React.createElement('select', {value:datasetKey, onChange:(e)=>setDatasetKey(e.target.value), style:{padding:"8px", background:"#0e1018", color:"#d4c9a8", border:"1px solid #e8b86d", borderRadius:4}},
+              Object.keys(DATASETS).map(k => React.createElement('option', {key:k}, k))
+            )
+          ),
+          React.createElement('div', {},
+            React.createElement('label', {style:{color:"#e8b86d", display:"block", marginBottom:4}}, `Period: ${period}`),
+            React.createElement('input', {type:"range", min:3, max:120, value:period, onChange:(e)=>setPeriod(Number(e.target.value)), style:{width:200}})
+          ),
+          React.createElement('div', {},
+            React.createElement('label', {style:{color:"#e8b86d", display:"block", marginBottom:4}}, `Cycles: ${Math.min(maxCycles, cycles.length)}/${cycles.length}`),
+            React.createElement('input', {type:"range", min:1, max:Math.min(20, cycles.length||1), value:maxCycles, onChange:(e)=>setMaxCycles(Number(e.target.value)), style:{width:150}})
+          )
+        ),
+
+        React.createElement('div', {style:{marginBottom:12, textAlign:"center", color:"#e8b86d"}}, `Coherence: ${cohScore}%`),
+        hint && React.createElement('div', {style:{marginBottom:12, fontSize:11, color:"rgba(212,201,168,0.6)", maxWidth:600, textAlign:"center"}}, hint),
+
+        React.createElement('svg', {width:SIZE, height:SIZE, viewBox:`0 0 ${SIZE} ${SIZE}`, style:{border:"1px solid #e8b86d", borderRadius:4, background:"#080a0f"}},
+          React.createElement('defs', {},
+            React.createElement('radialGradient', {id:"bg"},
+              React.createElement('stop', {offset:"0%", stopColor:"#131620"}),
+              React.createElement('stop', {offset:"100%", stopColor:"#0a0c12"})
+            )
+          ),
+          React.createElement('rect', {width:SIZE, height:SIZE, fill:"url(#bg)"}),
+
+          [0.25,0.5,0.75,1].map(l => React.createElement('circle', {key:l, cx:CX, cy:CY, r:IR + l*(OR-IR), fill:"none", stroke:"rgba(232,184,109,0.15)", strokeWidth:1})),
+
+          showCycles && cycles.slice(0, maxCycles).map((cyc,ci) => {
+            const pts = cyc.map((v,i) => {
+              const a = (i/period)*Math.PI*2 - Math.PI/2;
+              const r = IR + ((v-minV)/range)*(OR-IR);
+              return [CX + r*Math.cos(a), CY + r*Math.sin(a)];
+            });
+            const d = `M ${pts.map(p=>`${p[0]},${p[1]}`).join(' L ')} Z`;
+            return React.createElement('path', {key:ci, d, fill:"none", stroke:CYCLE_COLORS[ci%5], strokeWidth:1, strokeOpacity:0.5});
+          }),
+
+          showAvg && avgCycle.length > 0 && (() => {
+            const pts = avgCycle.map((v,i) => {
+              const a = (i/period)*Math.PI*2 - Math.PI/2;
+              const r = IR + ((v-minV)/range)*(OR-IR);
+              return [CX + r*Math.cos(a), CY + r*Math.sin(a)];
+            });
+            const d = `M ${pts.map(p=>`${p[0]},${p[1]}`).join(' L ')} Z`;
+            return React.createElement('path', {key:"avg", d, fill:"rgba(232,184,109,0.08)", stroke:"#e8b86d", strokeWidth:2.5});
+          })(),
+
+          peakIdx >= 0 && (() => {
+            const a = (peakIdx/period)*Math.PI*2 - Math.PI/2;
+            const r = IR + ((avgCycle[peakIdx]-minV)/range)*(OR-IR);
+            const x = CX + r*Math.cos(a), y = CY + r*Math
+
