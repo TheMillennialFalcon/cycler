@@ -15,7 +15,9 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react,env">
+
+  <!-- Data generators and helpers: plain JS, no Babel needed -->
+  <script>
 import { useState, useMemo, useRef, useCallback } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1082,6 +1084,11 @@ function lerpColor(a, b, t) {
   return `rgb(${Math.round(ar+t*(br-ar))},${Math.round(ag+t*(bg-ag))},${Math.round(ab+t*(bb-ab))})`;
 }
 
+
+  </script>
+
+  <!-- React component: needs Babel to compile JSX -->
+  <script type="text/babel" data-presets="react,env">
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CycleViz() {
   const [datasetKey, setDatasetKey]     = useState("S&P 500 Returns");
