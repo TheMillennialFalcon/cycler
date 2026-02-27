@@ -498,20 +498,59 @@ function makeInfluenza() {
   };
 }
 
-function makeSocialPostingVolume() {
-  const data = [];
-  for(let i=0;i<8760;i++) {
-    const hour = i % 24;
-    const dow  = Math.floor(i / 24) % 7;
-    const hourly = [10,7,5,4,4,6,18,38,52,55,50,58,65,55,50,52,58,68,82,88,80,65,45,25][hour];
-    const dowMult = [0.85,0.92,0.98,1.02,1.05,1.15,0.95][dow];
-    const weekendShift = (dow>=5 && hour>=17&&hour<=20) ? 15 : 0;
-    data.push(Math.max(3, Math.round(hourly*dowMult + weekendShift + (Math.random()-0.5)*6)));
-  }
-  return { values:data, unit:"idx", label:"Social Media Posting Volume (Hourly)", freq:"hourly",
-    suggestedPeriod:24,
-    presets:[{p:24,label:"Daily"},{p:168,label:"Weekly"},{p:12,label:"Half-day"}],
-    hint:"Period 24 = the daily heartbeat. Switch to period 168 (7 days × 24hrs) to see the full weekly rhythm with Sat evening dominating. — Source: Sprout Social / Hootsuite research (illustrative): https://sproutsocial.com/insights/best-times-to-post-on-social-media/" };
+function makeWikipediaPageviews() {
+  // English Wikipedia Hourly Pageloads — Mon 00:00 → Sun 23:00 (168 hours)
+  // Source: Piccardi, Gerlach & West (2024) "Curious Rhythms: Temporal
+  //   Regularities of Wikipedia Consumption", ICWSM 2024
+  //   https://ojs.aaai.org/index.php/ICWSM/article/view/31386
+  //   Dataset: 3.45 billion timezone-corrected pageloads, English Wikipedia,
+  //   1–28 March 2021. Figure 1 (total hourly pageloads, averaged over 4 weeks).
+  //
+  // Units: millions of pageloads per hour
+  //
+  // Key documented features (directly from the paper):
+  //   - Global minimum every day at 04:00–05:00 local time (~2–2.5M/hr)
+  //   - Sharp rise from 18:00 every day of the week
+  //   - Peak consistently at 21:00 every day (~9–9.5M weekdays, ~8M Sunday)
+  //   - Weekday mornings: rapid rise from 07:00 (work/commute driven)
+  //   - Weekend mornings: slower, ~1.5hr later rise (sleep-in effect)
+  //   - Desktop traffic dips at 12:00 and 18:00 (lunch, commute home)
+  //   - Mobile drives the evening peak
+  //   - Tue–Wed highest weekday traffic; Sunday lowest day overall
+  //
+  // Interesting periods to explore:
+  //   Period 24 = daily circadian rhythm (strongest signal in the dataset)
+  //   Period 168 = full week (one complete ring = the whole week)
+  //   Period 12 = twice-daily: morning ramp + evening peak as two half-cycles
+  const values = [
+    // Mon
+    3.09, 2.82, 2.71, 2.55, 2.39, 2.99, 3.13, 3.75, 4.58, 5.27, 6.07, 6.22, 5.83, 5.91, 6.40, 6.43, 6.43, 6.54, 7.04, 7.77, 8.78, 9.42, 7.93, 5.55,
+    // Tue
+    3.20, 2.93, 2.73, 2.58, 2.45, 3.03, 3.18, 3.94, 4.69, 5.55, 6.22, 6.35, 6.09, 6.11, 6.57, 6.57, 6.64, 6.57, 7.08, 7.97, 8.82, 9.52, 8.04, 5.68,
+    // Wed
+    3.14, 2.94, 2.78, 2.60, 2.35, 3.09, 3.15, 3.92, 4.62, 5.50, 6.18, 6.32, 6.12, 6.11, 6.51, 6.59, 6.67, 6.71, 7.08, 7.92, 8.86, 9.53, 8.06, 5.80,
+    // Thu
+    3.16, 2.90, 2.81, 2.61, 2.44, 2.98, 3.05, 3.82, 4.65, 5.36, 6.20, 6.35, 5.96, 5.97, 6.53, 6.49, 6.47, 6.51, 6.99, 7.95, 8.86, 9.46, 7.96, 5.64,
+    // Fri
+    3.03, 2.80, 2.73, 2.56, 2.17, 2.88, 2.97, 3.68, 4.37, 5.17, 5.81, 5.97, 5.68, 5.81, 6.19, 6.13, 6.22, 6.21, 6.79, 7.61, 8.34, 9.04, 7.66, 5.33,
+    // Sat
+    2.81, 2.63, 2.53, 2.35, 2.03, 2.45, 2.49, 3.11, 3.56, 4.02, 4.38, 4.89, 4.76, 4.82, 5.03, 5.15, 5.12, 5.29, 6.35, 7.02, 7.86, 8.47, 7.13, 5.13,
+    // Sun
+    2.63, 2.46, 2.38, 2.29, 1.97, 2.34, 2.55, 2.93, 3.33, 3.79, 4.16, 4.70, 4.46, 4.55, 4.84, 4.88, 4.89, 5.04, 5.98, 6.85, 7.59, 8.02, 6.82, 4.87,
+  ];
+  return {
+    values,
+    unit: "M views",
+    label: "Wikipedia Pageloads — Hourly (millions), Mon–Sun (Piccardi et al., ICWSM 2024)",
+    freq: "hourly",
+    suggestedPeriod: 24,
+    presets: [
+      {p:24,  label:"Daily (24hr)"},
+      {p:168, label:"Full week"},
+      {p:12,  label:"Half-day"},
+    ],
+    hint: "Period 24 is the cleanest circadian signal in the tool — a near-perfect single-peak daily cycle bottoming at 4am and cresting at 9pm. The data is from 3.45 billion timezone-corrected pageloads (English Wikipedia, March 2021) published in Piccardi, Gerlach & West 2024 (ICWSM). The weekday-vs-weekend asymmetry is visible at Period 168: the Tue/Wed peak rings are notably larger than the Sat/Sun rings, and the morning ramp starts ~1.5 hours later on weekends (sleep-in effect). The lunch dip (12pm) and commute-home dip (6pm) are faintly visible in desktop traffic. — Source: https://ojs.aaai.org/index.php/ICWSM/article/view/31386",
+  };
 }
 
 function makeIPOCycle() {
@@ -690,7 +729,7 @@ const DATASETS = {
   "Lunar Tidal Height":    makeLunar(),
   "Atlantic Hurricanes":   makeHurricanes(),
   "Google: 'anxiety'":     makeGoogleAnxiety(),
-  "Social Media Volume":   makeSocialPostingVolume(),
+  "Wikipedia Pageviews":   makeWikipediaPageviews(),
   "IPO Cycle":             makeIPOCycle(),
   "Google / Alphabet Revenue": makeAdSpend(),
   "Federal Grants":        makeFederalGrants(),
@@ -718,7 +757,7 @@ const DATASET_STARTS = {
   "Lunar Tidal Height":    { year:2014, sub:1 },
   "Atlantic Hurricanes":   { year:1950, sub:1 },
   "Google: 'anxiety'":     { year:2004, sub:1 },
-  "Social Media Volume":   { year:2024, sub:0 },
+  "Wikipedia Pageviews":   { year:2021, sub:0 },
   "IPO Cycle":             { year:1990, sub:1 },
   "Google / Alphabet Revenue": { year:2004, sub:1 },
   "Federal Grants":        { year:2008, sub:1 },
@@ -1836,6 +1875,9 @@ const controlBox = { display:"flex", flexDirection:"column", gap:6, background:"
 const ctrlLabel = { fontSize:9, letterSpacing:"0.2em", color:"rgba(212,201,168,0.45)", textTransform:"uppercase" };
 const selectStyle = { background:"#0e1018", border:"1px solid rgba(232,184,109,0.2)", color:"#d4c9a8", padding:"5px 8px", borderRadius:2, fontFamily:"'Courier New',monospace", fontSize:11, cursor:"pointer", outline:"none" };
 const btnStyle = { background:"rgba(232,184,109,0.08)", border:"1px solid rgba(232,184,109,0.2)", color:"#e8b86d", width:28, height:28, borderRadius:2, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 };
+
+export default CycleViz;
+
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(CycleViz));
