@@ -1612,58 +1612,6 @@ function CycleViz() {
         </svg>
       </div>
 
-      {avgCycle.length > 0 && (
-        <div style={{width:"100%", maxWidth:710, marginTop:16, border:"1px solid rgba(109,232,184,0.15)", borderRadius:3, background:"rgba(109,232,184,0.02)", padding:"12px 14px"}}>
-          <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:10}}>
-            <div>
-              <div style={{fontSize:9, letterSpacing:"0.2em", color:"rgba(109,232,184,0.6)", marginBottom:2}}>SEASONALITY FORECAST</div>
-              <div style={{fontSize:9, color:"rgba(212,201,168,0.35)"}}>Based on historical average cycle — showing what the pattern predicts ahead</div>
-            </div>
-            <div style={{fontSize:9, color:"rgba(212,201,168,0.3)", letterSpacing:"0.1em"}}>← NOW &nbsp;&nbsp; FUTURE →</div>
-          </div>
-          <div style={{display:"flex", gap:2, flexWrap:"wrap"}}>
-            {forecastCells.map((cell, ci) => {
-              const s = cell.strength;
-              const isAbove = s > 0;
-              const intensity = Math.abs(s);
-              const bg = isAbove ? `rgba(109,232,184,${0.08+intensity*0.35})` : `rgba(232,125,109,${0.08+intensity*0.35})`;
-              const border = isAbove ? `rgba(109,232,184,${0.2+intensity*0.4})` : `rgba(232,125,109,${0.2+intensity*0.4})`;
-              const textColor = isAbove ? "#6de8b8" : "#e87d6d";
-              const isCurrent = ci===0 && cell.cycleOffset===0;
-              const isNextCycle = cell.cycleOffset===1 && cell.phase===0;
-              return (
-                <div key={ci} style={{position:"relative"}}>
-                  {isNextCycle && <div style={{position:"absolute", top:-14, left:0, fontSize:7, color:"rgba(212,201,168,0.3)", letterSpacing:"0.1em", whiteSpace:"nowrap"}}>NEXT CYCLE ▼</div>}
-                  <div style={{width:ci===0?44:36, minHeight:54, background:bg, border:`1px solid ${border}`, borderRadius:3, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"4px 2px", outline:isCurrent?"2px solid #6de8b8":"none", outlineOffset:1}}>
-                    <div style={{fontSize:7, color:"rgba(212,201,168,0.4)", letterSpacing:"0.03em", textAlign:"center"}}>{getFutureDateLabel(cell.stepsAhead,freq,period)}</div>
-                    <div style={{width:20, height:28, background:"rgba(0,0,0,0.3)", borderRadius:2, display:"flex", flexDirection:"column", justifyContent:"flex-end", overflow:"hidden"}}>
-                      <div style={{width:"100%", height:`${Math.max(5,intensity*100)}%`, background:isAbove?`rgba(109,232,184,${0.5+intensity*0.5})`:`rgba(232,125,109,${0.5+intensity*0.5})`, borderRadius:2}}/>
-                    </div>
-                    <div style={{fontSize:7, color:textColor, fontWeight:"bold", letterSpacing:"0.02em"}}>{s>0.5?"▲▲":s>0.15?"▲":s<-0.5?"▼▼":s<-0.15?"▼":"—"}</div>
-                    <div style={{fontSize:6.5, color:"rgba(212,201,168,0.5)", textAlign:"center", lineHeight:1.2}}>{fmtVal(cell.val, dataset.unit)}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{marginTop:12, borderTop:"1px solid rgba(232,184,109,0.08)", paddingTop:10}}>
-            <div style={{fontSize:9, letterSpacing:"0.15em", color:"rgba(212,201,168,0.3)", marginBottom:6}}>PHASE STRENGTH RANKING — strongest → weakest</div>
-            <div style={{display:"flex", gap:3, flexWrap:"wrap"}}>
-              {[...phaseStrength.map((s,i)=>({s,i}))].sort((a,b)=>b.s-a.s).map(({s,i}) => {
-                const isAbove = s > 0;
-                const intensity = Math.abs(s);
-                const bg = isAbove?`rgba(109,232,184,${0.06+intensity*0.25})`:`rgba(232,125,109,${0.06+intensity*0.25})`;
-                const col = isAbove?`rgba(109,232,184,${0.4+intensity*0.6})`:`rgba(232,125,109,${0.4+intensity*0.6})`;
-                return (
-                  <div key={i} style={{padding:"3px 6px", borderRadius:2, background:bg, border:`1px solid ${col}`, fontSize:8, color:col, fontFamily:"'Courier New',monospace", outline:i===currentPhase?"1.5px solid #6de8b8":"none"}}>
-                    {getPhaseLabel(i,freq,cycleStartYear,cycleStartSub,period)}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {showSpiral && growthEnvelope && (() => {
         const { peakVals, troughVals, normP, normT, N, spiralType, spiralColor, spiralDesc, spiralEquation, growthFactor } = growthEnvelope;
@@ -1799,7 +1747,15 @@ function CycleViz() {
         for(let start = period; start < n; start += period) dividers.push(xOf(start));
         const yTicks = [0,0.25,0.5,0.75,1].map(t => ({ v:minV+t*vRange, y:yOf(minV+t*vRange) }));
 
+        const DOW_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
         const buildDateLabel = (idx) => {
+          if(freq === 'hourly') {
+            const hourOfWeek = (cycleStartSub + idx) % 168;
+            const dayIdx = Math.floor(hourOfWeek / 24);
+            const hourOfDay = hourOfWeek % 24;
+            if(hourOfDay === 0) return DOW_SHORT[dayIdx % 7];
+            return '';
+          }
           if(freq === 'monthly') {
             const totalM = (cycleStartYear * 12 + cycleStartSub - 1) + idx;
             const mo = totalM % 12, yr = Math.floor(totalM / 12);
@@ -1816,7 +1772,8 @@ function CycleViz() {
           return String(idx);
         };
 
-        const labelEvery = Math.max(1, Math.round(n / 8 / period) * period);
+        // For hourly: label every 24 hrs (day boundaries only); else ~8 labels across dataset
+        const labelEvery = freq === 'hourly' ? 24 : Math.max(1, Math.round(n / 8 / period) * period);
         const xLabelsFinal = [];
         for(let i = 0; i < n; i += labelEvery) xLabelsFinal.push({ x:xOf(i), label:buildDateLabel(i) });
 
@@ -1862,6 +1819,58 @@ function CycleViz() {
           </div>
         );
       })()}
+      {avgCycle.length > 0 && (
+        <div style={{width:"100%", maxWidth:710, marginTop:16, border:"1px solid rgba(109,232,184,0.15)", borderRadius:3, background:"rgba(109,232,184,0.02)", padding:"12px 14px"}}>
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:10}}>
+            <div>
+              <div style={{fontSize:9, letterSpacing:"0.2em", color:"rgba(109,232,184,0.6)", marginBottom:2}}>SEASONALITY FORECAST</div>
+              <div style={{fontSize:9, color:"rgba(212,201,168,0.35)"}}>Based on historical average cycle — showing what the pattern predicts ahead</div>
+            </div>
+            <div style={{fontSize:9, color:"rgba(212,201,168,0.3)", letterSpacing:"0.1em"}}>← NOW &nbsp;&nbsp; FUTURE →</div>
+          </div>
+          <div style={{display:"flex", gap:2, flexWrap:"wrap"}}>
+            {forecastCells.map((cell, ci) => {
+              const s = cell.strength;
+              const isAbove = s > 0;
+              const intensity = Math.abs(s);
+              const bg = isAbove ? `rgba(109,232,184,${0.08+intensity*0.35})` : `rgba(232,125,109,${0.08+intensity*0.35})`;
+              const border = isAbove ? `rgba(109,232,184,${0.2+intensity*0.4})` : `rgba(232,125,109,${0.2+intensity*0.4})`;
+              const textColor = isAbove ? "#6de8b8" : "#e87d6d";
+              const isCurrent = ci===0 && cell.cycleOffset===0;
+              const isNextCycle = cell.cycleOffset===1 && cell.phase===0;
+              return (
+                <div key={ci} style={{position:"relative"}}>
+                  {isNextCycle && <div style={{position:"absolute", top:-14, left:0, fontSize:7, color:"rgba(212,201,168,0.3)", letterSpacing:"0.1em", whiteSpace:"nowrap"}}>NEXT CYCLE ▼</div>}
+                  <div style={{width:ci===0?44:36, minHeight:54, background:bg, border:`1px solid ${border}`, borderRadius:3, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, padding:"4px 2px", outline:isCurrent?"2px solid #6de8b8":"none", outlineOffset:1}}>
+                    <div style={{fontSize:7, color:"rgba(212,201,168,0.4)", letterSpacing:"0.03em", textAlign:"center"}}>{getFutureDateLabel(cell.stepsAhead,freq,period)}</div>
+                    <div style={{width:20, height:28, background:"rgba(0,0,0,0.3)", borderRadius:2, display:"flex", flexDirection:"column", justifyContent:"flex-end", overflow:"hidden"}}>
+                      <div style={{width:"100%", height:`${Math.max(5,intensity*100)}%`, background:isAbove?`rgba(109,232,184,${0.5+intensity*0.5})`:`rgba(232,125,109,${0.5+intensity*0.5})`, borderRadius:2}}/>
+                    </div>
+                    <div style={{fontSize:7, color:textColor, fontWeight:"bold", letterSpacing:"0.02em"}}>{s>0.5?"▲▲":s>0.15?"▲":s<-0.5?"▼▼":s<-0.15?"▼":"—"}</div>
+                    <div style={{fontSize:6.5, color:"rgba(212,201,168,0.5)", textAlign:"center", lineHeight:1.2}}>{fmtVal(cell.val, dataset.unit)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{marginTop:12, borderTop:"1px solid rgba(232,184,109,0.08)", paddingTop:10}}>
+            <div style={{fontSize:9, letterSpacing:"0.15em", color:"rgba(212,201,168,0.3)", marginBottom:6}}>PHASE STRENGTH RANKING — strongest → weakest</div>
+            <div style={{display:"flex", gap:3, flexWrap:"wrap"}}>
+              {[...phaseStrength.map((s,i)=>({s,i}))].sort((a,b)=>b.s-a.s).map(({s,i}) => {
+                const isAbove = s > 0;
+                const intensity = Math.abs(s);
+                const bg = isAbove?`rgba(109,232,184,${0.06+intensity*0.25})`:`rgba(232,125,109,${0.06+intensity*0.25})`;
+                const col = isAbove?`rgba(109,232,184,${0.4+intensity*0.6})`:`rgba(232,125,109,${0.4+intensity*0.6})`;
+                return (
+                  <div key={i} style={{padding:"3px 6px", borderRadius:2, background:bg, border:`1px solid ${col}`, fontSize:8, color:col, fontFamily:"'Courier New',monospace", outline:i===currentPhase?"1.5px solid #6de8b8":"none"}}>
+                    {getPhaseLabel(i,freq,cycleStartYear,cycleStartSub,period)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{marginTop:14, maxWidth:560, textAlign:"center", fontSize:9, color:"rgba(212,201,168,0.2)", letterSpacing:"0.15em", lineHeight:2}}>
         FIND YOUR PERIOD · SET YOUR PHASE · READ WHAT COMES NEXT
