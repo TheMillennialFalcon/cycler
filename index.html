@@ -779,11 +779,12 @@ const CYCLE_COLORS = [
 ];
 
 function fmtVal(v, unit) {
+  if(v === undefined || v === null || isNaN(v)) return '—';
   const abs = Math.abs(v);
   const isInt = unit === 'wins' || unit === 'W' || Number.isInteger(v);
   const s = isInt ? Math.round(v).toFixed(0)
     : abs >= 10000 ? v.toFixed(0) : abs >= 100 ? v.toFixed(1) : abs >= 1 ? v.toFixed(2) : v.toFixed(3);
-  return s + unit;
+  return s + ' ' + unit;
 }
 
 const MO  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1433,7 +1434,7 @@ function CycleViz() {
             <div style={{fontSize:9, color:currentColor, letterSpacing:"0.1em", marginTop:2}}>
               {currentStrength > 0.5 ? "PEAK ZONE" : currentStrength < -0.5 ? "TROUGH ZONE" : currentStrength > 0.15 ? "EXPANDING" : currentStrength < -0.15 ? "CONTRACTING" : "NEUTRAL"}
             </div>
-            <div style={{fontSize:9, color:"rgba(212,201,168,0.45)", marginTop:1}}>avg: {fmtVal(currentVal, dataset.unit)}</div>
+            <div style={{fontSize:9, color:"rgba(212,201,168,0.45)", marginTop:1, whiteSpace:"nowrap"}}>avg: {fmtVal(currentVal, dataset.unit)}</div>
           </div>
         </div>
         <div style={{display:"flex", alignItems:"center", gap:8}}>
@@ -1445,8 +1446,8 @@ function CycleViz() {
         </div>
       </div>
 
-      <div style={{border:"1px solid rgba(232,184,109,0.15)", borderRadius:4, background:"rgba(232,184,109,0.02)", boxShadow:"0 0 60px rgba(232,184,109,0.05),inset 0 0 40px rgba(0,0,0,0.3)", padding:8}}>
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{display:"block"}}>
+      <div style={{border:"1px solid rgba(232,184,109,0.15)", borderRadius:4, background:"rgba(232,184,109,0.02)", boxShadow:"0 0 60px rgba(232,184,109,0.05),inset 0 0 40px rgba(0,0,0,0.3)", padding:8, paddingTop:36}}>
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{display:"block", overflow:"visible"}}>
           <defs>
             <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#131620"/><stop offset="100%" stopColor="#0a0c12"/>
@@ -1466,17 +1467,18 @@ function CycleViz() {
 
           {[0.25,0.5,0.75,1.0].map(l => {
             const r = IR + l*(OR-IR);
-            const val = minV + l*range;
-            const fmtV = Math.abs(val)>=1000?val.toFixed(0):Math.abs(val)>=10?val.toFixed(1):val.toFixed(2);
-            const labelText = `${fmtV}${dataset.unit}`;
-            const lx = CX - r - 4;
-            const labelW = labelText.length*6.5+8;
-            return <g key={l}>
-              <circle cx={CX} cy={CY} r={r} fill="none" stroke={l===1?"rgba(232,184,109,0.18)":"rgba(232,184,109,0.09)"} strokeWidth={l===1?1.5:1} strokeDasharray={l===1?"none":"4 6"}/>
-              <rect x={lx-labelW} y={CY-7} width={labelW} height={14} rx={3} fill="rgba(10,12,18,0.85)" stroke="rgba(232,184,109,0.2)" strokeWidth={0.5}/>
-              <text x={lx-4} y={CY+1} textAnchor="end" dominantBaseline="middle" fill={l===1?"#e8c87a":"rgba(212,196,158,0.75)"} fontSize={9.5} fontFamily="'Courier New',monospace" fontWeight={l===1?"bold":"normal"}>{labelText}</text>
-            </g>;
+            return <circle key={l} cx={CX} cy={CY} r={r} fill="none" stroke={l===1?"rgba(232,184,109,0.18)":"rgba(232,184,109,0.09)"} strokeWidth={l===1?1.5:1} strokeDasharray={l===1?"none":"4 6"}/>;
           })}
+          {(() => {
+            const fmtV = Math.abs(maxV)>=1000?maxV.toFixed(0):Math.abs(maxV)>=10?maxV.toFixed(1):maxV.toFixed(2);
+            const labelText = `${fmtV} ${dataset.unit}`;
+            const labelW = labelText.length*6.5+12;
+            return <g>
+              <line x1={CX} y1={CY-OR-2} x2={CX} y2={CY-OR-52} stroke="rgba(232,184,109,0.3)" strokeWidth={1} strokeDasharray="2,3"/>
+              <rect x={CX-labelW/2} y={CY-OR-70} width={labelW} height={16} rx={3} fill="rgba(10,12,18,0.92)" stroke="rgba(232,184,109,0.35)" strokeWidth={0.8}/>
+              <text x={CX} y={CY-OR-60} textAnchor="middle" dominantBaseline="middle" fill="#e8c87a" fontSize={9.5} fontFamily="'Courier New',monospace" fontWeight="bold">{labelText}</text>
+            </g>;
+          })()}
 
           {ticks.map((_,i) => <line key={i}
             x1={CX+IR*Math.cos((i/period)*Math.PI*2-Math.PI/2)} y1={CY+IR*Math.sin((i/period)*Math.PI*2-Math.PI/2)}
@@ -1554,8 +1556,8 @@ function CycleViz() {
             const stepsAhead = (currentPhase - computeTodayPhase(freq,cycleStartYear,cycleStartSub,period) + period) % period;
             const lbl = getFutureDateLabel(stepsAhead, freq, period);
             const w = Math.max(28, lbl.length*7+10);
-            const lx = CX + (needleR+20)*Math.cos(needleAngle);
-            const ly = CY + (needleR+20)*Math.sin(needleAngle);
+            const lx = CX + (needleR+28)*Math.cos(needleAngle);
+            const ly = CY + (needleR+28)*Math.sin(needleAngle);
             return <>
               <rect x={lx-w/2} y={ly-9} width={w} height={14} rx={3} fill="rgba(10,12,18,0.92)" stroke="rgba(109,232,184,0.5)" strokeWidth={0.8}/>
               <text x={lx} y={ly+1} textAnchor="middle" dominantBaseline="middle" fill="#6de8b8" fontSize={lbl.length>5?7:8} fontFamily="'Courier New',monospace" fontWeight="bold">{lbl}</text>
@@ -1772,10 +1774,14 @@ function CycleViz() {
           return String(idx);
         };
 
-        // For hourly: label every 24 hrs (day boundaries only); else ~8 labels across dataset
-        const labelEvery = freq === 'hourly' ? 24 : Math.max(1, Math.round(n / 8 / period) * period);
+        // For hourly: label at every day boundary (hour % 24 === 0), skip empty strings
+        // For other freqs: ~8 evenly spaced labels aligned to cycle boundaries
+        const labelEvery = freq === 'hourly' ? 1 : Math.max(1, Math.round(n / 8 / period) * period);
         const xLabelsFinal = [];
-        for(let i = 0; i < n; i += labelEvery) xLabelsFinal.push({ x:xOf(i), label:buildDateLabel(i) });
+        for(let i = 0; i < n; i += labelEvery) {
+          const lbl = buildDateLabel(i);
+          if(lbl) xLabelsFinal.push({ x:xOf(i), label:lbl });
+        }
 
         const bands = [];
         for(let c = 0; c * period < n; c++) {
@@ -1847,7 +1853,6 @@ function CycleViz() {
                       <div style={{width:"100%", height:`${Math.max(5,intensity*100)}%`, background:isAbove?`rgba(109,232,184,${0.5+intensity*0.5})`:`rgba(232,125,109,${0.5+intensity*0.5})`, borderRadius:2}}/>
                     </div>
                     <div style={{fontSize:7, color:textColor, fontWeight:"bold", letterSpacing:"0.02em"}}>{s>0.5?"▲▲":s>0.15?"▲":s<-0.5?"▼▼":s<-0.15?"▼":"—"}</div>
-                    <div style={{fontSize:6.5, color:"rgba(212,201,168,0.5)", textAlign:"center", lineHeight:1.2}}>{fmtVal(cell.val, dataset.unit)}</div>
                   </div>
                 </div>
               );
